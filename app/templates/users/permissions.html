@@ -1,32 +1,98 @@
 {% extends 'base.html' %}
 
-{% block title %}Permissions · {{ app_name }}{% endblock %}
+{% block title %}{{ target_user.username }} · {{ app_name }}{% endblock %}
 
 {% block content %}
+<section class="page-section">
+  <article class="card">
+    <div class="section-heading compact">
+      <div>
+        <p class="eyebrow">User permissions</p>
+        <h2>{{ target_user.username }}</h2>
+        <p class="muted">Role: {{ target_user.role }} · Parent: {{ target_user.parent.username if target_user.parent else 'Root' }}</p>
+      </div>
+      <a class="btn btn-ghost" href="{{ url_for('users.index') }}">Back to users</a>
+    </div>
+    <div class="metric-grid permission-metrics">
+      <article class="metric"><span>Explicit grants</span><strong>{{ grants|length }}</strong></article>
+      <article class="metric"><span>Children</span><strong>{{ target_user.children|length }}</strong></article>
+      <article class="metric"><span>Status</span><strong>{{ 'Active' if target_user.is_active_account else 'Disabled' }}</strong></article>
+    </div>
+  </article>
+</section>
+
 <section class="two-column">
   <article class="card">
-    <p class="eyebrow">Target account</p>
-    <h2>{{ target_user.username }}</h2>
-    <p class="muted">Role: {{ target_user.role }}</p>
+    <p class="eyebrow">Action access</p>
+    <h2>Grant or deny actions</h2>
+    <p class="muted">Use exact keys like commands.execute or wildcard prefixes such as server.actions.*.</p>
     <form method="post" class="stack-form">
-      {{ form.hidden_tag() }}
-      <label>{{ form.scope_type.label }} {{ form.scope_type(class_='input') }}</label>
-      <label>{{ form.scope_value.label }} {{ form.scope_value(class_='input') }}</label>
-      <label>{{ form.capability.label }} {{ form.capability(class_='input') }}</label>
-      <label>{{ form.effect.label }} {{ form.effect(class_='input') }}</label>
-      <button type="submit" name="grant-submit" value="1" class="btn btn-primary">{{ form.submit.label.text }}</button>
+      {{ action_form.hidden_tag() }}
+      <label>
+        {{ action_form.scope_value.label }}
+        {{ action_form.scope_value(class_='input', list='action-options', placeholder='commands.execute') }}
+      </label>
+      <datalist id="action-options">
+        {% for action_key in known_actions %}
+        <option value="{{ action_key }}"></option>
+        {% endfor %}
+      </datalist>
+      <label>{{ action_form.effect.label }} {{ action_form.effect(class_='input') }}</label>
+      <button type="submit" name="action-submit" value="1" class="btn btn-primary">{{ action_form.submit.label.text }}</button>
     </form>
   </article>
 
   <article class="card">
-    <p class="eyebrow">Explicit grants</p>
+    <p class="eyebrow">Path access</p>
+    <h2>Grant or deny file capabilities</h2>
+    <p class="muted">Pick a managed path or paste a deeper folder inside one of them.</p>
+    <form method="post" class="stack-form">
+      {{ path_form.hidden_tag() }}
+      <label>
+        {{ path_form.scope_value.label }}
+        {{ path_form.scope_value(class_='input', list='path-options', placeholder='/srv/minecraft/config') }}
+      </label>
+      <datalist id="path-options">
+        {% for managed_path in managed_paths %}
+        <option value="{{ managed_path.absolute_path }}">{{ managed_path.label }}</option>
+        {% endfor %}
+      </datalist>
+      <label>{{ path_form.capability.label }} {{ path_form.capability(class_='input') }}</label>
+      <label>{{ path_form.effect.label }} {{ path_form.effect(class_='input') }}</label>
+      <button type="submit" name="path-submit" value="1" class="btn btn-primary">{{ path_form.submit.label.text }}</button>
+    </form>
+  </article>
+</section>
+
+<section class="two-column wide-right">
+  <article class="card">
+    <p class="eyebrow">Effective actions</p>
+    <h2>What this user can do</h2>
+    <table class="table">
+      <thead><tr><th>Action</th><th>Access</th><th>Source</th></tr></thead>
+      <tbody>
+        {% for item in action_permissions %}
+        <tr>
+          <td class="mono">{{ item.key }}</td>
+          <td><span class="status-pill {{ 'allow' if item.allowed else 'deny' }}">{{ 'allow' if item.allowed else 'deny' }}</span></td>
+          <td>{{ item.source }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3">No actions are registered yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="card">
+    <p class="eyebrow">Explicit rules</p>
     <h2>Overrides and additions</h2>
     <table class="table">
       <thead><tr><th>Scope</th><th>Capability</th><th>Effect</th><th></th></tr></thead>
       <tbody>
         {% for grant in grants %}
         <tr>
-          <td>{{ grant.scope_type }} · {{ grant.scope_value }}</td>
+          <td>{{ grant.scope_type }} · <span class="mono">{{ grant.scope_value }}</span></td>
           <td>{{ grant.capability }}</td>
           <td><span class="status-pill {{ grant.effect }}">{{ grant.effect }}</span></td>
           <td>
@@ -38,6 +104,29 @@
         </tr>
         {% else %}
         <tr><td colspan="4">No explicit permission grants yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+</section>
+
+<section class="page-section">
+  <article class="card">
+    <p class="eyebrow">Managed paths</p>
+    <h2>Effective file access</h2>
+    <table class="table">
+      <thead><tr><th>Path</th><th>Type</th><th>View</th><th>Edit</th><th>Upload</th></tr></thead>
+      <tbody>
+        {% for item in path_permissions %}
+        <tr>
+          <td><strong>{{ item.label }}</strong><div class="muted mono">{{ item.path }}</div></td>
+          <td>{{ item.path_type }}</td>
+          <td><span class="status-pill {{ 'allow' if item.view else 'deny' }}">{{ 'allow' if item.view else 'deny' }}</span></td>
+          <td><span class="status-pill {{ 'allow' if item.edit else 'deny' }}">{{ 'allow' if item.edit else 'deny' }}</span></td>
+          <td><span class="status-pill {{ 'allow' if item.upload else 'deny' }}">{{ 'allow' if item.upload else 'deny' }}</span></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No managed paths are configured yet.</td></tr>
         {% endfor %}
       </tbody>
     </table>

@@ -402,6 +402,18 @@ input[type="file"] {
   white-space: pre-wrap;
 }
 
+.table-link {
+  font-weight: 700;
+}
+
+.table-button {
+  padding: 0.6rem 0.95rem;
+}
+
+.permission-metrics {
+  margin-top: 1rem;
+}
+
 @media (max-width: 768px) {
   .page-shell {
     width: min(100% - 1rem, 1180px);

@@ -27,6 +27,23 @@ def test_viewer_file_edit_becomes_pending_request(app, client, user_factory, man
         assert pending_request.status == "pending"
 
 
+def test_file_request_page_uses_single_editor_for_non_editors(client, user_factory, managed_path_factory, login):
+    user_factory("viewer_request")
+    managed_path = managed_path_factory("request-root", allow_view=True, allow_edit=False)
+    config_file = Path(managed_path.absolute_path) / "server.properties"
+    config_file.write_text("motd=Original\n", encoding="utf-8")
+
+    login("viewer_request")
+    response = client.get(f"/files/{managed_path.id}?subpath=server.properties")
+
+    assert response.status_code == 200
+    page = response.get_data(as_text=True)
+    assert "Request a change" in page
+    assert "Alternate suggestion" not in page
+    assert 'name="edit-content"' in page
+    assert 'name="suggest-content"' not in page
+
+
 def test_path_traversal_is_rejected(client, user_factory, managed_path_factory, login, tmp_path):
     user_factory("viewer_two")
     managed_path = managed_path_factory("safe-root", allow_view=True)

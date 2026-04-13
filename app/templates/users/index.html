@@ -25,12 +25,18 @@
       <tbody>
         {% for user in users %}
         <tr>
-          <td>{{ user.username }}</td>
+          <td>
+            {% if current_user.is_superadmin or user.parent_id == current_user.id %}
+            <a class="table-link" href="{{ url_for('users.permissions', user_id=user.id) }}">{{ user.username }}</a>
+            {% else %}
+            {{ user.username }}
+            {% endif %}
+          </td>
           <td>{{ user.role }}</td>
           <td>{{ user.parent.username if user.parent else 'Root' }}</td>
           <td>
             {% if current_user.is_superadmin or user.parent_id == current_user.id %}
-            <a href="{{ url_for('users.permissions', user_id=user.id) }}">Permissions</a>
+            <a class="btn btn-ghost table-button" href="{{ url_for('users.permissions', user_id=user.id) }}">Open page</a>
             {% endif %}
           </td>
         </tr>

@@ -7,8 +7,10 @@
   <article class="card">
     <p class="eyebrow">System</p>
     <h2>Core settings</h2>
+    <p class="muted">Set the Minecraft server directory once and MCPortal will auto-register common folders, top-level config files, and lifecycle scripts.</p>
     <form method="post" class="stack-form">
       {{ system_form.hidden_tag() }}
+      <label>{{ system_form.server_root.label }} {{ system_form.server_root(class_='input', placeholder='/srv/minecraft') }}</label>
       <label>{{ system_form.rcon_host.label }} {{ system_form.rcon_host(class_='input') }}</label>
       <label>{{ system_form.rcon_port.label }} {{ system_form.rcon_port(class_='input') }}</label>
       <label>{{ system_form.rcon_password.label }} {{ system_form.rcon_password(class_='input') }}</label>
@@ -20,29 +22,21 @@
 
   <article class="card">
     <p class="eyebrow">Files</p>
-    <h2>Add managed path</h2>
-    <form method="post" class="stack-form">
-      {{ path_form.hidden_tag() }}
-      <label>{{ path_form.label.label }} {{ path_form.label(class_='input') }}</label>
-      <label>{{ path_form.absolute_path.label }} {{ path_form.absolute_path(class_='input') }}</label>
-      <label>{{ path_form.path_type.label }} {{ path_form.path_type(class_='input') }}</label>
-      <label class="checkbox-row">{{ path_form.allow_view() }} <span>Allow view</span></label>
-      <label class="checkbox-row">{{ path_form.allow_edit() }} <span>Allow direct edit</span></label>
-      <label class="checkbox-row">{{ path_form.allow_upload() }} <span>Allow upload</span></label>
-      <button type="submit" name="path-submit" value="1" class="btn btn-secondary">{{ path_form.submit.label.text }}</button>
-    </form>
+    <h2>Managed paths</h2>
+    <p class="muted">These sync from the server directory above. Use Files and Mods to work with them instead of adding separate roots here.</p>
     <div class="mini-table">
       {% for item in managed_paths %}
-      <div class="list-row"><strong>{{ item.label }}</strong><span class="muted">{{ item.absolute_path }}</span></div>
+      <div class="list-row"><strong>{{ item.label }} · {{ item.path_type }}</strong><span class="muted">{{ item.absolute_path }}</span></div>
       {% else %}
-      <p class="muted">No managed paths yet.</p>
+      <p class="muted">No managed paths yet. Set a server directory and update settings to sync them.</p>
       {% endfor %}
     </div>
   </article>
 
   <article class="card">
     <p class="eyebrow">Buttons</p>
-    <h2>Add managed action</h2>
+    <h2>Managed actions</h2>
+    <p class="muted">Common start, stop, and restart scripts are auto-created from the server folder. Only change this if your server needs a custom launcher command.</p>
     <form method="post" class="stack-form">
       {{ action_form.hidden_tag() }}
       <label>{{ action_form.key.label }} {{ action_form.key(class_='input') }}</label>

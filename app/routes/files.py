@@ -6,7 +6,7 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, u
 from flask_login import current_user, login_required
 
 from app.extensions import db
-from app.forms import FileEditForm, FileSuggestionForm
+from app.forms import FileEditForm
 from app.models import ManagedPath
 from app.services.approvals import create_pending_request
 from app.services.audit import write_audit
@@ -46,7 +46,6 @@ def browse(path_id: int):
         return redirect(url_for("files.index"))
 
     edit_form = FileEditForm(prefix="edit")
-    suggestion_form = FileSuggestionForm(prefix="suggest")
 
     content = None
     entries = []
@@ -63,9 +62,24 @@ def browse(path_id: int):
 
     if request.method == "GET" and content is not None:
         edit_form.content.data = content
-        suggestion_form.content.data = content
 
     if request.method == "POST" and content is not None:
+        if "suggest-submit" in request.form:
+            suggestion_content = request.form.get("suggest-content", "")
+            if suggestion_content.strip():
+                create_pending_request(
+                    "file_edit",
+                    str(target),
+                    {"content": suggestion_content},
+                    current_user,
+                    target_name=target.name,
+                )
+                flash("Change request sent for approval.", "info")
+                return redirect(url_for("files.browse", path_id=path_id, subpath=subpath))
+
+            flash("Content is required.", "danger")
+            edit_form.content.data = content
+
         if "edit-submit" in request.form and edit_form.validate_on_submit():
             if has_path_capability(current_user, str(target), "edit"):
                 backup_path = write_text_file(str(target), edit_form.content.data)
@@ -88,17 +102,6 @@ def browse(path_id: int):
                 flash("Change request sent for approval.", "info")
             return redirect(url_for("files.browse", path_id=path_id, subpath=subpath))
 
-        if "suggest-submit" in request.form and suggestion_form.validate_on_submit():
-            create_pending_request(
-                "file_edit",
-                str(target),
-                {"content": suggestion_form.content.data},
-                current_user,
-                target_name=target.name,
-            )
-            flash("Change request sent for approval.", "info")
-            return redirect(url_for("files.browse", path_id=path_id, subpath=subpath))
-
     parent_subpath = ""
     if subpath:
         parent_subpath = str(Path(subpath).parent)
@@ -116,5 +119,4 @@ def browse(path_id: int):
         is_text_file=is_text_file,
         can_edit=has_path_capability(current_user, str(target), "edit"),
         edit_form=edit_form,
-        suggestion_form=suggestion_form,
     )

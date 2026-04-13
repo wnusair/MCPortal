@@ -24,6 +24,17 @@ def validate_absolute_path(form: FlaskForm, field: StringField) -> None:
         raise ValidationError("An absolute path is required.")
 
 
+def validate_existing_directory(form: FlaskForm, field: StringField) -> None:
+    if not field.data:
+        return
+
+    candidate = Path(field.data)
+    if not candidate.is_absolute():
+        raise ValidationError("An absolute path is required.")
+    if not candidate.exists() or not candidate.is_dir():
+        raise ValidationError("Choose an existing directory.")
+
+
 def validate_json_args(form: FlaskForm, field: TextAreaField) -> None:
     try:
         value = json.loads(field.data or "[]")
@@ -103,18 +114,32 @@ class PermissionGrantForm(FlaskForm):
     submit = SubmitField("Save grant")
 
 
-class ManagedPathForm(FlaskForm):
-    label = StringField("Label", validators=[DataRequired(), Length(max=64)])
-    absolute_path = StringField("Absolute path", validators=[DataRequired(), validate_absolute_path])
-    path_type = SelectField(
-        "Type",
-        choices=[("config", "Config"), ("mods", "Mods"), ("data", "Data")],
+class ActionPermissionForm(FlaskForm):
+    scope_value = StringField(
+        "Action key or wildcard",
+        validators=[DataRequired(), Length(max=512)],
+    )
+    effect = SelectField(
+        "Effect",
+        choices=[("allow", "Allow"), ("deny", "Deny")],
         validators=[DataRequired()],
     )
-    allow_view = BooleanField("Allow view", default=True)
-    allow_edit = BooleanField("Allow direct edit")
-    allow_upload = BooleanField("Allow upload")
-    submit = SubmitField("Add managed path")
+    submit = SubmitField("Save action rule")
+
+
+class PathPermissionForm(FlaskForm):
+    scope_value = StringField("Path or folder", validators=[DataRequired(), validate_absolute_path])
+    capability = SelectField(
+        "Capability",
+        choices=[("view", "View path"), ("edit", "Edit path"), ("upload", "Upload into path")],
+        validators=[DataRequired()],
+    )
+    effect = SelectField(
+        "Effect",
+        choices=[("allow", "Allow"), ("deny", "Deny")],
+        validators=[DataRequired()],
+    )
+    submit = SubmitField("Save path rule")
 
 
 class ManagedActionForm(FlaskForm):
@@ -127,6 +152,10 @@ class ManagedActionForm(FlaskForm):
 
 
 class SystemSettingsForm(FlaskForm):
+    server_root = StringField(
+        "Minecraft server directory",
+        validators=[Optional(), validate_existing_directory],
+    )
     rcon_host = StringField("RCON host", validators=[DataRequired(), Length(max=255)])
     rcon_port = StringField("RCON port", validators=[DataRequired(), Length(max=16)])
     rcon_password = PasswordField("RCON password", validators=[Optional(), Length(max=255)])
@@ -146,11 +175,6 @@ class CommandForm(FlaskForm):
 class FileEditForm(FlaskForm):
     content = TextAreaField("Content", validators=[DataRequired()])
     submit = SubmitField("Save")
-
-
-class FileSuggestionForm(FlaskForm):
-    content = TextAreaField("Proposed content", validators=[DataRequired()])
-    submit = SubmitField("Submit for approval")
 
 
 class ModUploadForm(FlaskForm):

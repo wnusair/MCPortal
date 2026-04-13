@@ -45,10 +45,10 @@ The sample `DATABASE_URL=sqlite:///mcportal.db` stores the SQLite file under the
 ## First configuration steps
 
 1. Go to Settings.
-2. Set the RCON host, port, and password.
-3. Add one or more managed paths for config files and mods.
-4. Add managed lifecycle actions such as `server.start`, `server.stop`, and `server.restart` using absolute executable paths.
-5. Create underlings and permission grants.
+2. Set the Minecraft server directory to auto-discover common folders, top-level config files, and lifecycle scripts.
+3. Confirm or adjust the imported RCON host, port, and password.
+4. Add any extra managed paths or managed actions that are specific to your server layout.
+5. Create underlings and manage their permissions from each user's dedicated permissions page.
 
 ## Running tests
 

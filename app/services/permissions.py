@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.models import ManagedPath, PermissionGrant, ROLE_PRECEDENCE, User
+from app.models import ManagedAction, ManagedPath, PermissionGrant, ROLE_PRECEDENCE, User
 
 
 BASE_ACTIONS = {
@@ -39,6 +39,16 @@ BASE_ACTIONS = {
     },
 }
 
+ADMIN_ACTIONS = {
+    "approvals.review",
+    "audit.view",
+    "commands.execute",
+    "server.actions.run",
+    "settings.manage",
+    "users.create_underling",
+    "users.manage_permissions",
+}
+
 
 def normalize_path(value: str) -> str:
     return str(Path(value).expanduser().resolve())
@@ -65,6 +75,37 @@ def has_action_permission(user: User, action_key: str) -> bool:
         return grant.effect == "allow"
 
     return action_key in BASE_ACTIONS.get(user.role, set())
+
+
+def list_known_action_keys() -> list[str]:
+    known_actions = set(ADMIN_ACTIONS)
+    for action_group in BASE_ACTIONS.values():
+        known_actions.update(action_group)
+    for managed_action in ManagedAction.query.order_by(ManagedAction.key.asc()).all():
+        known_actions.add(f"server.actions.{managed_action.key}")
+    return sorted(known_actions)
+
+
+def describe_action_permission(user: User, action_key: str) -> dict[str, str | bool]:
+    if user.is_superadmin:
+        return {"key": action_key, "allowed": True, "source": "superadmin"}
+
+    grant = _best_action_grant(user, action_key)
+    if grant is not None:
+        return {
+            "key": action_key,
+            "allowed": grant.effect == "allow",
+            "source": f"explicit {grant.effect}",
+        }
+
+    if action_key in BASE_ACTIONS.get(user.role, set()):
+        return {"key": action_key, "allowed": True, "source": f"role: {user.role}"}
+
+    return {"key": action_key, "allowed": False, "source": "not granted"}
+
+
+def summarize_action_permissions(user: User) -> list[dict[str, str | bool]]:
+    return [describe_action_permission(user, action_key) for action_key in list_known_action_keys()]
 
 
 def _best_path_grant(user: User, absolute_path: str, capability: str) -> PermissionGrant | None:
@@ -108,6 +149,22 @@ def has_path_capability(user: User, absolute_path: str, capability: str) -> bool
     if capability == "upload":
         return managed_root.allow_upload and user.role in {"operator", "admin"}
     return False
+
+
+def summarize_path_permissions(user: User) -> list[dict[str, object]]:
+    summaries: list[dict[str, object]] = []
+    for managed_path in ManagedPath.query.order_by(ManagedPath.label.asc()).all():
+        summaries.append(
+            {
+                "label": managed_path.label,
+                "path": managed_path.absolute_path,
+                "path_type": managed_path.path_type,
+                "view": has_path_capability(user, managed_path.absolute_path, "view"),
+                "edit": has_path_capability(user, managed_path.absolute_path, "edit"),
+                "upload": has_path_capability(user, managed_path.absolute_path, "upload"),
+            }
+        )
+    return summaries
 
 
 def can_create_underling(actor: User, requested_role: str) -> bool:

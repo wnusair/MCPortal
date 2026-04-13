@@ -34,29 +34,20 @@
     </table>
   </article>
   {% elif is_text_file %}
-  <section class="two-column wide-right">
-    <article class="card">
-      <p class="eyebrow">{{ 'Direct edit' if can_edit else 'Suggestion flow' }}</p>
-      <h3>{{ 'Edit live file' if can_edit else 'Propose a change' }}</h3>
-      <form method="post" class="stack-form">
-        {{ edit_form.hidden_tag() }}
-        {{ edit_form.content(class_='editor') }}
-        <button type="submit" name="edit-submit" value="1" class="btn btn-primary">
-          {{ 'Save file' if can_edit else 'Submit change request' }}
-        </button>
-      </form>
-    </article>
-    <article class="card">
-      <p class="eyebrow">Approval queue</p>
-      <h3>Alternate suggestion</h3>
-      <p class="muted">Use this if you want to leave a separate proposal without overwriting the current editor.</p>
-      <form method="post" class="stack-form">
-        {{ suggestion_form.hidden_tag() }}
-        {{ suggestion_form.content(class_='editor editor-compact') }}
-        <button type="submit" name="suggest-submit" value="1" class="btn btn-secondary">Submit for approval</button>
-      </form>
-    </article>
-  </section>
+  <article class="card">
+    <p class="eyebrow">{{ 'Direct edit' if can_edit else 'Approval request' }}</p>
+    <h3>{{ 'Edit live file' if can_edit else 'Request a change' }}</h3>
+    <p class="muted">
+      {{ 'Changes save directly to the live file.' if can_edit else 'Update the file contents below and send a single approval request.' }}
+    </p>
+    <form method="post" class="stack-form">
+      {{ edit_form.hidden_tag() }}
+      {{ edit_form.content(class_='editor') }}
+      <button type="submit" name="edit-submit" value="1" class="btn btn-primary">
+        {{ 'Save file' if can_edit else 'Submit change request' }}
+      </button>
+    </form>
+  </article>
   {% else %}
   <article class="card">
     <p class="muted">This file can be viewed by path, but not edited in the browser because it is not on the allowed text-file list.</p>
