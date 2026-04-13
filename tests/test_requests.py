@@ -5,6 +5,7 @@ import tarfile
 from pathlib import Path
 
 from app.models import PendingRequest, StagedUpload
+from app.services.server_control import MinecraftServerStatus
 
 
 def test_files_index_uses_browser_rows(client, user_factory, managed_path_factory, login):
@@ -92,7 +93,38 @@ def test_tar_archives_show_contents_in_browser(client, user_factory, managed_pat
     page = response.get_data(as_text=True)
     assert "Archive preview" in page
     assert "server.properties" in page
+    assert "Open" in page
     assert 'name="edit-submit"' not in page
+
+
+def test_tar_archives_open_text_members_and_cleanup_temp_extracts(
+    app,
+    client,
+    user_factory,
+    managed_path_factory,
+    login,
+):
+    user_factory("viewer_archive_member")
+    managed_path = managed_path_factory("archive-root", allow_view=True)
+    archive_path = Path(managed_path.absolute_path) / "logs-2026-04-13.tar.gz"
+    payload = b"[Server thread/INFO]: Saved the game\n"
+
+    with tarfile.open(archive_path, mode="w:gz") as archive:
+        info = tarfile.TarInfo("logs/latest.log")
+        info.size = len(payload)
+        archive.addfile(info, io.BytesIO(payload))
+
+    login("viewer_archive_member")
+    response = client.get(f"/files/{managed_path.id}?subpath=logs-2026-04-13.tar.gz&member=logs/latest.log")
+
+    assert response.status_code == 200
+    page = response.get_data(as_text=True)
+    assert "logs/latest.log" in page
+    assert "Saved the game" in page
+    assert "deletes the uncompressed copy" in page
+
+    preview_root = Path(app.instance_path) / "archive_previews"
+    assert not preview_root.exists() or list(preview_root.iterdir()) == []
 
 
 def test_path_traversal_is_rejected(client, user_factory, managed_path_factory, login, tmp_path):
@@ -180,3 +212,44 @@ def test_command_without_permission_creates_pending_request(client, user_factory
         pending_request = PendingRequest.query.one()
         assert pending_request.request_type == "command"
         assert pending_request.target_name == "/say hello world"
+
+
+def test_dashboard_shows_live_server_state(client, user_factory, login, monkeypatch):
+    user_factory("viewer_dashboard")
+    monkeypatch.setattr(
+        "app.routes.dashboard.get_minecraft_server_status",
+        lambda: MinecraftServerStatus(
+            state="offline",
+            label="off",
+            detail="No RCON listener responded on 127.0.0.1:25575.",
+        ),
+    )
+
+    login("viewer_dashboard")
+    response = client.get("/")
+
+    assert response.status_code == 200
+    page = response.get_data(as_text=True)
+    assert 'status-pill offline' in page
+    assert "No RCON listener responded on 127.0.0.1:25575." in page
+
+
+def test_commands_page_uses_console_shell(client, user_factory, login, monkeypatch):
+    user_factory("viewer_console")
+    monkeypatch.setattr(
+        "app.routes.commands.get_minecraft_server_status",
+        lambda: MinecraftServerStatus(
+            state="online",
+            label="on",
+            detail="RCON accepted a connection on 127.0.0.1:25575.",
+        ),
+    )
+
+    login("viewer_console")
+    response = client.get("/commands/")
+
+    assert response.status_code == 200
+    page = response.get_data(as_text=True)
+    assert 'class="card console-card"' in page
+    assert "Server console" in page
+    assert "mcp://server-console" in page

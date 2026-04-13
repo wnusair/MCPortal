@@ -18,6 +18,13 @@ class ServerControlError(ValueError):
     pass
 
 
+@dataclass(frozen=True)
+class MinecraftServerStatus:
+    state: str
+    label: str
+    detail: str
+
+
 def validate_minecraft_command(command: str) -> str:
     cleaned = command.strip().lstrip("/")
     if not cleaned or len(cleaned) > 512:
@@ -125,14 +132,72 @@ class RconClient:
         return response.payload.decode("utf-8", errors="replace")
 
 
-def send_minecraft_command(command: str) -> str:
-    validated = validate_minecraft_command(command)
-    password = get_setting("rcon_password", current_app.config["RCON_PASSWORD"])
-    if not password:
-        raise ServerControlError("RCON is not configured yet.")
-
+def get_rcon_connection_settings() -> tuple[str, int, str, int]:
     host = get_setting("rcon_host", current_app.config["RCON_HOST"])
     port = int(get_setting("rcon_port", str(current_app.config["RCON_PORT"])))
+    password = get_setting("rcon_password", current_app.config["RCON_PASSWORD"])
     timeout = int(current_app.config["RCON_TIMEOUT"])
+    return host, port, password, timeout
+
+
+def get_minecraft_server_status() -> MinecraftServerStatus:
+    try:
+        host, port, password, timeout = get_rcon_connection_settings()
+    except ValueError:
+        return MinecraftServerStatus(
+            state="warning",
+            label="unknown",
+            detail="MCPortal has an invalid RCON host or port configured.",
+        )
+
+    endpoint = f"{host}:{port}"
+
+    if not password:
+        try:
+            with socket.create_connection((host, port), timeout=timeout):
+                return MinecraftServerStatus(
+                    state="warning",
+                    label="on",
+                    detail=f"RCON is reachable on {endpoint}, but MCPortal has no password configured.",
+                )
+        except OSError:
+            return MinecraftServerStatus(
+                state="offline",
+                label="off",
+                detail=f"No RCON listener responded on {endpoint}.",
+            )
+
+    try:
+        with RconClient(host, port, password, timeout):
+            return MinecraftServerStatus(
+                state="online",
+                label="on",
+                detail=f"RCON accepted a connection on {endpoint}.",
+            )
+    except ServerControlError as exc:
+        if str(exc) == "RCON authentication failed.":
+            return MinecraftServerStatus(
+                state="warning",
+                label="on",
+                detail=f"The server is reachable on {endpoint}, but the saved RCON password was rejected.",
+            )
+        return MinecraftServerStatus(
+            state="warning",
+            label="unknown",
+            detail=str(exc),
+        )
+    except OSError:
+        return MinecraftServerStatus(
+            state="offline",
+            label="off",
+            detail=f"No RCON listener responded on {endpoint}.",
+        )
+
+
+def send_minecraft_command(command: str) -> str:
+    validated = validate_minecraft_command(command)
+    host, port, password, timeout = get_rcon_connection_settings()
+    if not password:
+        raise ServerControlError("RCON is not configured yet.")
     with RconClient(host, port, password, timeout) as client:
         return client.command(validated)

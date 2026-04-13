@@ -1,26 +1,48 @@
 {% extends 'base.html' %}
 
-{% block title %}Commands · {{ app_name }}{% endblock %}
+{% block title %}Console · {{ app_name }}{% endblock %}
 
 {% block content %}
-<section class="two-column">
-  <article class="card">
-    <p class="eyebrow">Minecraft only</p>
-    <h2>RCON command center</h2>
-    <p class="muted">Commands go through Minecraft RCON only. No shell execution is exposed here.</p>
-    <form method="post" class="stack-form">
-      {{ form.hidden_tag() }}
-      <label>{{ form.command.label }} {{ form.command(class_='input') }}</label>
-      <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
-    </form>
-    {% if output %}
-    <pre class="console-output">{{ output }}</pre>
-    {% endif %}
+<section class="two-column wide-right">
+  <article class="card console-card">
+    <div class="console-shell">
+      <div class="console-shell-bar">
+        <div class="console-lights" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+        <span class="mono console-shell-title">mcp://server-console</span>
+        <span class="status-pill {{ server_status.state }}">server {{ server_status.label }}</span>
+      </div>
+
+      <div class="console-shell-meta">
+        <div>
+          <p class="eyebrow console-eyebrow">Minecraft only</p>
+          <h2>Server console</h2>
+        </div>
+        <p class="muted">Commands go through Minecraft RCON only. No shell execution is exposed here.</p>
+        <p class="console-status-detail">{{ server_status.detail }}</p>
+      </div>
+
+      <form method="post" class="console-form">
+        {{ form.hidden_tag() }}
+        <label class="console-prompt">
+          <span class="console-prompt-sigil">&gt;</span>
+          {{ form.command(class_='input console-input', placeholder='/say Server is live') }}
+        </label>
+        <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
+      </form>
+
+      <div class="console-screen">
+        <p class="console-screen-label">Latest response</p>
+        <pre class="console-output console-output--terminal{% if not output %} console-output--placeholder{% endif %}">{{ output or 'No command output yet. Send a Minecraft command to see the next response here.' }}</pre>
+      </div>
+    </div>
   </article>
 
   <article class="card">
     <p class="eyebrow">Managed controls</p>
     <h2>Lifecycle buttons</h2>
+    <p class="muted">These run only the fixed actions configured in settings, so opening the console never exposes shell access.</p>
     <div class="tile-grid">
       {% for action in actions %}
       <form action="{{ url_for('commands.run_action', action_key=action.key) }}" method="post" class="action-tile">

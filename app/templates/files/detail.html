@@ -112,20 +112,58 @@
     <div class="section-heading compact">
       <div>
         <p class="eyebrow">Archive preview</p>
-        <h3>Contents</h3>
-        <p class="muted">Compressed server archives are read only. You can inspect the contents here or download the raw file.</p>
+        <h3>{{ archive_preview.name if archive_preview else 'Contents' }}</h3>
+        <p class="muted">
+          {% if archive_preview %}
+          MCPortal extracted this file only for the current view and deletes the uncompressed copy as soon as the page finishes rendering.
+          {% else %}
+          Pick a text file below to open it in the browser. Archive previews stay read only and the temporary extraction is cleaned up automatically.
+          {% endif %}
+        </p>
       </div>
       <div class="inline-actions">
+        {% if archive_preview %}
+        <a class="btn btn-ghost" href="{{ url_for('files.browse', path_id=managed_path.id, subpath=subpath) }}">Back to archive</a>
+        {% endif %}
         <a class="btn btn-ghost" href="{{ url_for('files.raw', path_id=managed_path.id, subpath=subpath) }}">Open raw file</a>
         <a class="btn btn-secondary" href="{{ url_for('files.raw', path_id=managed_path.id, subpath=subpath, download=1) }}">Download</a>
       </div>
     </div>
+
+    {% if archive_preview %}
+    <div class="browser-properties">
+      <div class="browser-property-row">
+        <span class="muted">Selected entry</span>
+        <strong>{{ archive_preview.name }}</strong>
+      </div>
+      <div class="browser-property-row">
+        <span class="muted">Size</span>
+        <strong>{{ archive_preview.size_display }}</strong>
+      </div>
+      <div class="browser-property-row">
+        <span class="muted">Cleanup</span>
+        <strong>Temporary extract removed after view</strong>
+      </div>
+    </div>
+    <pre class="console-output file-preview">{{ archive_preview.content }}</pre>
+    {% endif %}
+
     <div class="archive-list">
       {% for entry in archive_entries %}
       <div class="archive-row">
-        <span class="mono archive-name">{{ entry.name }}</span>
+        <div class="archive-row-main">
+          <span class="mono archive-name">{{ entry.name }}</span>
+          <span class="muted">{{ 'Text preview available' if entry.can_preview else 'Inline preview unavailable for this entry' }}</span>
+        </div>
         <span class="muted">{{ entry.entry_type }}</span>
         <span class="muted">{{ entry.size_display }}</span>
+        {% if entry.can_preview %}
+        <a class="btn {{ 'btn-secondary' if archive_preview and archive_preview.name == entry.name else 'btn-ghost' }} table-button" href="{{ url_for('files.browse', path_id=managed_path.id, subpath=subpath, member=entry.name) }}">
+          {{ 'Viewing' if archive_preview and archive_preview.name == entry.name else 'Open' }}
+        </a>
+        {% else %}
+        <span class="muted">No inline view</span>
+        {% endif %}
       </div>
       {% else %}
       <p class="muted">This archive is empty.</p>

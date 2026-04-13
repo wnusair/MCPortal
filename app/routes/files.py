@@ -14,6 +14,7 @@ from app.services.files import (
     FileAccessError,
     describe_path,
     list_archive_members,
+    read_archive_text_preview,
     list_directory,
     read_text_file,
     read_text_preview,
@@ -57,11 +58,13 @@ def browse(path_id: int):
         abort(404)
 
     edit_form = FileEditForm(prefix="edit")
+    archive_member = request.args.get("member", "")
 
     file_details = describe_path(str(target))
     content = None
     entries = []
     archive_entries = []
+    archive_preview = None
     supports_edit = bool(file_details["supports_edit"])
     if target.is_dir():
         entries = list_directory(managed_path.absolute_path, subpath)
@@ -73,7 +76,12 @@ def browse(path_id: int):
         elif file_details["preview_mode"] == "archive":
             try:
                 archive_entries = list_archive_members(str(target))
+                if archive_member:
+                    archive_preview = read_archive_text_preview(str(target), archive_member)
             except FileAccessError:
+                if archive_member:
+                    flash("That archive entry could not be opened.", "danger")
+                    return redirect(url_for("files.browse", path_id=path_id, subpath=subpath))
                 archive_entries = []
                 file_details["preview_mode"] = "raw"
 
@@ -135,6 +143,7 @@ def browse(path_id: int):
         file_details=file_details,
         content=content,
         archive_entries=archive_entries,
+        archive_preview=archive_preview,
         can_edit=supports_edit and has_path_capability(current_user, str(target), "edit"),
         supports_edit=supports_edit,
         edit_form=edit_form,

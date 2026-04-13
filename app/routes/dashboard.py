@@ -4,6 +4,7 @@ from flask import Blueprint, render_template
 from flask_login import current_user, login_required
 
 from app.models import AuditLog, ManagedAction, ManagedPath, PendingRequest
+from app.services.server_control import get_minecraft_server_status
 
 
 bp = Blueprint("dashboard", __name__)
@@ -12,6 +13,8 @@ bp = Blueprint("dashboard", __name__)
 @bp.route("/")
 @login_required
 def index():
+    server_status = get_minecraft_server_status()
+
     if current_user.is_superadmin:
         pending_count = PendingRequest.query.filter_by(status="pending").count()
         recent_audits = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(10).all()
@@ -34,4 +37,5 @@ def index():
         managed_actions=ManagedAction.query.filter_by(enabled=True).count(),
         recent_audits=recent_audits,
         actions=ManagedAction.query.filter_by(enabled=True).order_by(ManagedAction.label.asc()).all(),
+        server_status=server_status,
     )

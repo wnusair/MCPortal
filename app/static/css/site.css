@@ -192,6 +192,21 @@ p {
   font-size: 1.9rem;
 }
 
+.metric small {
+  display: block;
+  margin-top: 0.55rem;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+
+.metric-status {
+  align-items: flex-start;
+}
+
+.metric-status .status-pill {
+  margin-top: 0.55rem;
+}
+
 .two-column,
 .three-column {
   display: grid;
@@ -353,12 +368,15 @@ input[type="file"] {
 .status-pill.executed,
 .status-pill.promoted,
 .status-pill.allow,
+.status-pill.online,
 .flash.success {
   background: rgba(43, 107, 75, 0.14);
   color: var(--success);
 }
 
 .status-pill.pending,
+.status-pill.warning,
+.status-pill.unknown,
 .flash.info,
 .flash.warning {
   background: rgba(160, 90, 18, 0.13);
@@ -369,6 +387,7 @@ input[type="file"] {
 .status-pill.failed,
 .status-pill.rejected,
 .status-pill.deny,
+.status-pill.offline,
 .flash.danger {
   background: rgba(142, 35, 32, 0.14);
   color: var(--danger);
@@ -400,6 +419,146 @@ input[type="file"] {
   color: #f7eadf;
   overflow-x: auto;
   white-space: pre-wrap;
+}
+
+.console-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.console-shell {
+  display: grid;
+  gap: 1.15rem;
+  padding: 1.35rem;
+  background:
+    linear-gradient(180deg, rgba(18, 13, 11, 0.98), rgba(31, 22, 20, 0.96)),
+    radial-gradient(circle at top, rgba(123, 216, 143, 0.14), transparent 42%);
+  color: #f8eee5;
+}
+
+.console-shell-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(247, 234, 223, 0.11);
+}
+
+.console-lights {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.console-lights span {
+  width: 0.78rem;
+  height: 0.78rem;
+  border-radius: 999px;
+  background: rgba(247, 234, 223, 0.22);
+}
+
+.console-lights span:first-child {
+  background: #c85f4f;
+}
+
+.console-lights span:nth-child(2) {
+  background: #d3a34e;
+}
+
+.console-lights span:last-child {
+  background: #4ea868;
+}
+
+.console-shell-title,
+.console-status-detail,
+.console-screen-label,
+.console-prompt-sigil {
+  font-family: "Consolas", "SFMono-Regular", monospace;
+}
+
+.console-shell-title {
+  color: #9fb6a6;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.console-shell .status-pill {
+  flex: 0 0 auto;
+}
+
+.console-shell-meta {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.console-eyebrow {
+  color: #7bd88f;
+}
+
+.console-status-detail {
+  color: #7bd88f;
+}
+
+.console-form {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.console-prompt {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(123, 216, 143, 0.24);
+  background: rgba(12, 10, 10, 0.9);
+}
+
+.console-prompt-sigil {
+  color: #7bd88f;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.console-input.input {
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: #f8eee5;
+  font-family: "Consolas", "SFMono-Regular", monospace;
+}
+
+.console-input.input:focus {
+  outline: none;
+}
+
+.console-screen {
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(123, 216, 143, 0.18);
+  background: rgba(10, 9, 9, 0.9);
+  padding: 1rem;
+}
+
+.console-screen-label {
+  margin: 0;
+  color: #7bd88f;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.76rem;
+}
+
+.console-output--terminal {
+  margin-top: 0.75rem;
+  min-height: 13rem;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #dcefe0;
+}
+
+.console-output--placeholder {
+  color: #99ab9e;
 }
 
 .table-link {
@@ -507,7 +666,7 @@ input[type="file"] {
 
 .archive-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   gap: 1rem;
   align-items: center;
   padding: 0.85rem 0;
@@ -516,6 +675,12 @@ input[type="file"] {
 
 .archive-row:last-child {
   border-bottom: none;
+}
+
+.archive-row-main {
+  min-width: 0;
+  display: grid;
+  gap: 0.3rem;
 }
 
 .archive-name {
@@ -535,6 +700,10 @@ input[type="file"] {
 
   .wide-right {
     grid-template-columns: 1fr;
+  }
+
+  .console-shell-bar {
+    flex-wrap: wrap;
   }
 
   .browser-row,

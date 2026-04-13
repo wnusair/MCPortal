@@ -3,8 +3,10 @@ from __future__ import annotations
 import mimetypes
 import shutil
 import tarfile
+from contextlib import closing
 from datetime import UTC, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+from tempfile import TemporaryDirectory
 
 from flask import current_app
 
@@ -92,6 +94,11 @@ def is_archive_file(path: Path) -> bool:
 
 
 def _is_previewable_text_file(path: Path) -> bool:
+    return _is_previewable_text_name(path.name)
+
+
+def _is_previewable_text_name(name: str) -> bool:
+    path = Path(name)
     if path.suffix.lower() in TEXT_PREVIEW_EXTENSIONS:
         return True
 
@@ -185,6 +192,10 @@ def read_text_preview(absolute_path: str) -> str:
     if is_archive_file(path) or not (_is_previewable_text_file(path) or is_editable_text_file(str(path))):
         raise FileAccessError("This file type cannot be previewed in the browser.")
 
+    return _read_text_preview_from_path(path)
+
+
+def _read_text_preview_from_path(path: Path) -> str:
     with path.open("rb") as handle:
         data = handle.read(TEXT_PREVIEW_BYTE_LIMIT + 1)
 
@@ -195,7 +206,29 @@ def read_text_preview(absolute_path: str) -> str:
     return preview
 
 
-def list_archive_members(absolute_path: str) -> list[dict[str, str]]:
+def _normalize_archive_member_name(member_name: str) -> str:
+    normalized = PurePosixPath(member_name.replace("\\", "/"))
+    if normalized.is_absolute() or any(part == ".." for part in normalized.parts):
+        raise FileAccessError("That archive entry is not allowed.")
+
+    cleaned = str(normalized)
+    if cleaned in {"", "."}:
+        raise FileAccessError("That archive entry could not be opened.")
+    return cleaned
+
+
+def _find_archive_member(archive: tarfile.TarFile, member_name: str) -> tarfile.TarInfo:
+    normalized_name = _normalize_archive_member_name(member_name)
+    for member in archive.getmembers():
+        try:
+            if _normalize_archive_member_name(member.name) == normalized_name:
+                return member
+        except FileAccessError:
+            continue
+    raise FileAccessError("That archive entry could not be found.")
+
+
+def list_archive_members(absolute_path: str) -> list[dict[str, str | bool]]:
     path = Path(normalize_path(absolute_path))
     if not path.exists() or not path.is_file():
         raise FileAccessError("File does not exist.")
@@ -204,18 +237,62 @@ def list_archive_members(absolute_path: str) -> list[dict[str, str]]:
 
     try:
         with tarfile.open(path, mode="r:*") as archive:
-            members: list[dict[str, str]] = []
+            members: list[dict[str, str | bool]] = []
             for index, member in enumerate(archive):
                 if index >= ARCHIVE_PREVIEW_LIMIT:
                     break
+                try:
+                    member_name = _normalize_archive_member_name(member.name)
+                except FileAccessError:
+                    member_name = member.name
                 members.append(
                     {
                         "entry_type": "Directory" if member.isdir() else "File",
-                        "name": member.name,
+                        "name": member_name,
                         "size_display": "--" if member.isdir() else _format_size(member.size),
+                        "can_preview": member.isfile() and _is_previewable_text_name(member_name),
                     }
                 )
             return members
+    except tarfile.TarError as exc:
+        raise FileAccessError("This archive could not be read.") from exc
+
+
+def read_archive_text_preview(absolute_path: str, member_name: str) -> dict[str, str]:
+    archive_path = Path(normalize_path(absolute_path))
+    if not archive_path.exists() or not archive_path.is_file():
+        raise FileAccessError("File does not exist.")
+    if not is_archive_file(archive_path):
+        raise FileAccessError("This file is not a supported archive.")
+
+    preview_root = Path(current_app.instance_path) / "archive_previews"
+    preview_root.mkdir(parents=True, exist_ok=True)
+
+    try:
+        with tarfile.open(archive_path, mode="r:*") as archive:
+            member = _find_archive_member(archive, member_name)
+            normalized_name = _normalize_archive_member_name(member.name)
+            if not member.isfile():
+                raise FileAccessError("Only files inside the archive can be opened.")
+            if not _is_previewable_text_name(normalized_name):
+                raise FileAccessError("That archive entry cannot be previewed in the browser.")
+
+            extracted_stream = archive.extractfile(member)
+            if extracted_stream is None:
+                raise FileAccessError("That archive entry could not be opened.")
+
+            with TemporaryDirectory(dir=preview_root, prefix="preview-") as temp_dir:
+                extracted_path = Path(temp_dir) / normalized_name
+                extracted_path.parent.mkdir(parents=True, exist_ok=True)
+                with extracted_path.open("wb") as handle, closing(extracted_stream):
+                    shutil.copyfileobj(extracted_stream, handle)
+
+                return {
+                    "content": _read_text_preview_from_path(extracted_path),
+                    "entry_type": "File",
+                    "name": normalized_name,
+                    "size_display": _format_size(member.size),
+                }
     except tarfile.TarError as exc:
         raise FileAccessError("This archive could not be read.") from exc
 

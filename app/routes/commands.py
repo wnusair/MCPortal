@@ -8,7 +8,12 @@ from app.models import ManagedAction, PendingRequest
 from app.services.approvals import create_pending_request
 from app.services.audit import write_audit
 from app.services.permissions import has_action_permission
-from app.services.server_control import ServerControlError, run_managed_action, send_minecraft_command
+from app.services.server_control import (
+    ServerControlError,
+    get_minecraft_server_status,
+    run_managed_action,
+    send_minecraft_command,
+)
 
 
 bp = Blueprint("commands", __name__, url_prefix="/commands")
@@ -19,6 +24,7 @@ bp = Blueprint("commands", __name__, url_prefix="/commands")
 def index():
     form = CommandForm()
     output = None
+    server_status = get_minecraft_server_status()
 
     if form.validate_on_submit():
         command = form.command.data
@@ -59,6 +65,7 @@ def index():
         output=output,
         requests=requests,
         actions=actions,
+        server_status=server_status,
     )
 
 

@@ -7,9 +7,15 @@
   <div>
     <p class="eyebrow">Operations hub</p>
     <h2>Fabric server command center</h2>
-    <p class="muted">Manage files, queue risky changes, and keep every action traceable.</p>
+    <p class="muted">Manage files, queue risky changes, and keep every action traceable. The live server badge below reflects the current RCON endpoint state.</p>
   </div>
   <div class="metric-grid">
+    <article class="metric metric-status">
+      <span>Server</span>
+      <strong>{{ server_status.label }}</strong>
+      <span class="status-pill {{ server_status.state }}">{{ server_status.label }}</span>
+      <small>{{ server_status.detail }}</small>
+    </article>
     <article class="metric"><span>Pending</span><strong>{{ pending_count }}</strong></article>
     <article class="metric"><span>Managed paths</span><strong>{{ managed_paths }}</strong></article>
     <article class="metric"><span>Managed actions</span><strong>{{ managed_actions }}</strong></article>
