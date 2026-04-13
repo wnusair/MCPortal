@@ -40,6 +40,8 @@ flask --app run.py run --debug
 
 Open the app, visit `/bootstrap`, and create the first superadmin account.
 
+The sample `DATABASE_URL=sqlite:///mcportal.db` stores the SQLite file under the Flask `instance/` directory.
+
 ## First configuration steps
 
 1. Go to Settings.
