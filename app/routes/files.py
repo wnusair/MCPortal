@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
 from app.extensions import db
@@ -10,7 +10,16 @@ from app.forms import FileEditForm
 from app.models import ManagedPath
 from app.services.approvals import create_pending_request
 from app.services.audit import write_audit
-from app.services.files import FileAccessError, list_directory, read_text_file, resolve_safe_path, write_text_file
+from app.services.files import (
+    FileAccessError,
+    describe_path,
+    list_archive_members,
+    list_directory,
+    read_text_file,
+    read_text_preview,
+    resolve_safe_path,
+    write_text_file,
+)
 from app.services.permissions import has_path_capability
 
 
@@ -44,26 +53,34 @@ def browse(path_id: int):
     if not has_path_capability(current_user, str(target), "view"):
         flash("You do not have access to that path.", "danger")
         return redirect(url_for("files.index"))
+    if not target.exists():
+        abort(404)
 
     edit_form = FileEditForm(prefix="edit")
 
+    file_details = describe_path(str(target))
     content = None
     entries = []
-    is_text_file = target.is_file()
+    archive_entries = []
+    supports_edit = bool(file_details["supports_edit"])
     if target.is_dir():
         entries = list_directory(managed_path.absolute_path, subpath)
-        is_text_file = False
-    elif target.exists() and target.is_file():
-        try:
+    elif target.is_file():
+        if supports_edit:
             content = read_text_file(str(target))
-        except FileAccessError:
-            content = None
-            is_text_file = False
+        elif file_details["preview_mode"] == "text":
+            content = read_text_preview(str(target))
+        elif file_details["preview_mode"] == "archive":
+            try:
+                archive_entries = list_archive_members(str(target))
+            except FileAccessError:
+                archive_entries = []
+                file_details["preview_mode"] = "raw"
 
-    if request.method == "GET" and content is not None:
+    if request.method == "GET" and supports_edit and content is not None:
         edit_form.content.data = content
 
-    if request.method == "POST" and content is not None:
+    if request.method == "POST" and supports_edit and content is not None:
         if "suggest-submit" in request.form:
             suggestion_content = request.form.get("suggest-content", "")
             if suggestion_content.strip():
@@ -115,8 +132,39 @@ def browse(path_id: int):
         subpath=subpath,
         parent_subpath=parent_subpath,
         entries=entries,
+        file_details=file_details,
         content=content,
-        is_text_file=is_text_file,
-        can_edit=has_path_capability(current_user, str(target), "edit"),
+        archive_entries=archive_entries,
+        can_edit=supports_edit and has_path_capability(current_user, str(target), "edit"),
+        supports_edit=supports_edit,
         edit_form=edit_form,
+    )
+
+
+@bp.route("/<int:path_id>/raw")
+@login_required
+def raw(path_id: int):
+    managed_path = db.session.get(ManagedPath, path_id)
+    if managed_path is None:
+        abort(404)
+
+    subpath = request.args.get("subpath", "")
+    try:
+        target = resolve_safe_path(managed_path.absolute_path, subpath)
+    except FileAccessError:
+        flash("That path is not allowed.", "danger")
+        return redirect(url_for("files.index"))
+
+    if not has_path_capability(current_user, str(target), "view"):
+        flash("You do not have access to that path.", "danger")
+        return redirect(url_for("files.index"))
+    if not target.exists() or not target.is_file():
+        abort(404)
+
+    download = request.args.get("download") == "1"
+    return send_file(
+        str(target),
+        as_attachment=download,
+        conditional=True,
+        download_name=target.name,
     )

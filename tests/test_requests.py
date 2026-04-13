@@ -1,9 +1,23 @@
 from __future__ import annotations
 
 import io
+import tarfile
 from pathlib import Path
 
 from app.models import PendingRequest, StagedUpload
+
+
+def test_files_index_uses_browser_rows(client, user_factory, managed_path_factory, login):
+    user_factory("viewer_index")
+    managed_path_factory("server-root", allow_view=True)
+
+    login("viewer_index")
+    response = client.get("/files/")
+
+    assert response.status_code == 200
+    page = response.get_data(as_text=True)
+    assert 'class="browser-list"' in page
+    assert "tile-grid" not in page
 
 
 def test_viewer_file_edit_becomes_pending_request(app, client, user_factory, managed_path_factory, login):
@@ -42,6 +56,43 @@ def test_file_request_page_uses_single_editor_for_non_editors(client, user_facto
     assert "Alternate suggestion" not in page
     assert 'name="edit-content"' in page
     assert 'name="suggest-content"' not in page
+
+
+def test_log_files_are_previewed_but_not_editable(client, user_factory, managed_path_factory, login):
+    user_factory("admin_logs", role="admin")
+    managed_path = managed_path_factory("log-root", allow_view=True, allow_edit=True)
+    log_file = Path(managed_path.absolute_path) / "latest.log"
+    log_file.write_text("[Server thread/INFO]: Ready\n", encoding="utf-8")
+
+    login("admin_logs")
+    response = client.get(f"/files/{managed_path.id}?subpath=latest.log")
+
+    assert response.status_code == 200
+    page = response.get_data(as_text=True)
+    assert "Read only preview" in page
+    assert "Ready" in page
+    assert 'name="edit-submit"' not in page
+
+
+def test_tar_archives_show_contents_in_browser(client, user_factory, managed_path_factory, login):
+    user_factory("viewer_archive")
+    managed_path = managed_path_factory("data-root", allow_view=True)
+    archive_path = Path(managed_path.absolute_path) / "daily-backup.tar.gz"
+    payload = b"level-name=world\n"
+
+    with tarfile.open(archive_path, mode="w:gz") as archive:
+        info = tarfile.TarInfo("server.properties")
+        info.size = len(payload)
+        archive.addfile(info, io.BytesIO(payload))
+
+    login("viewer_archive")
+    response = client.get(f"/files/{managed_path.id}?subpath=daily-backup.tar.gz")
+
+    assert response.status_code == 200
+    page = response.get_data(as_text=True)
+    assert "Archive preview" in page
+    assert "server.properties" in page
+    assert 'name="edit-submit"' not in page
 
 
 def test_path_traversal_is_rejected(client, user_factory, managed_path_factory, login, tmp_path):

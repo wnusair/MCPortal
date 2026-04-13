@@ -1,28 +1,41 @@
+{% from 'macros/icons.html' import icon %}
 {% extends 'base.html' %}
 
 {% block title %}Files · {{ app_name }}{% endblock %}
 
 {% block content %}
 <section class="page-section">
-  <div class="section-heading">
+  <div class="section-heading compact">
     <div>
       <p class="eyebrow">Managed storage</p>
-      <h2>Browsable roots</h2>
+      <h2>File browser</h2>
+      <p class="muted">Open the synced server root to browse the full server directory, then use the same row list to move through folders and files.</p>
     </div>
   </div>
-  <div class="tile-grid">
+
+  <article class="card">
+    <div class="browser-list">
     {% for path in managed_paths %}
-    <article class="card tile-card">
-      <p class="eyebrow">{{ path.path_type }}</p>
-      <h3>{{ path.label }}</h3>
-      <p class="muted">{{ path.absolute_path }}</p>
-      <a class="btn btn-secondary" href="{{ url_for('files.browse', path_id=path.id) }}">Open</a>
-    </article>
+    <a class="browser-row browser-row--link" href="{{ url_for('files.browse', path_id=path.id) }}">
+      <div class="browser-row-main">
+        {{ icon('folder', 'icon browser-row-icon') }}
+        <div>
+          <h3 class="browser-row-title">{{ path.label }}</h3>
+          <p class="muted">{{ path.absolute_path }}</p>
+        </div>
+      </div>
+      <div class="browser-row-meta">
+        <span class="status-pill">{{ path.path_type }}</span>
+        <span class="muted">{{ 'Editable' if path.allow_edit else 'View only' }}</span>
+        <strong>Open</strong>
+      </div>
+    </a>
     {% else %}
-    <article class="card">
+    <div class="browser-row browser-row--empty">
       <p class="muted">No managed paths are available for this account.</p>
-    </article>
+    </div>
     {% endfor %}
-  </div>
+    </div>
+  </article>
 </section>
 {% endblock %}

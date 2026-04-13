@@ -414,6 +414,114 @@ input[type="file"] {
   margin-top: 1rem;
 }
 
+.browser-list,
+.browser-properties,
+.archive-list {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.browser-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(111, 29, 27, 0.11);
+  border-radius: var(--radius-md);
+  background: rgba(255, 251, 246, 0.9);
+}
+
+.browser-row--link {
+  color: var(--ink);
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+
+.browser-row--link:hover {
+  transform: translateY(-1px);
+  border-color: rgba(111, 29, 27, 0.2);
+  box-shadow: 0 14px 30px rgba(84, 35, 28, 0.09);
+}
+
+.browser-row--empty {
+  justify-content: center;
+}
+
+.browser-row-main {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.browser-row-icon {
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0.5rem;
+  border-radius: 0.95rem;
+  color: var(--accent);
+  background: rgba(111, 29, 27, 0.08);
+  flex: 0 0 auto;
+}
+
+.browser-row-title {
+  margin-bottom: 0.2rem;
+  font-size: 1.05rem;
+}
+
+.browser-row-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  text-align: right;
+}
+
+.browser-properties {
+  gap: 0;
+}
+
+.browser-property-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.95rem 0;
+  border-bottom: 1px solid rgba(111, 29, 27, 0.09);
+}
+
+.browser-property-row:first-child {
+  padding-top: 0;
+}
+
+.browser-property-row:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.file-preview {
+  margin-top: 1rem;
+  max-height: min(70vh, 44rem);
+}
+
+.archive-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid rgba(111, 29, 27, 0.09);
+}
+
+.archive-row:last-child {
+  border-bottom: none;
+}
+
+.archive-name {
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 768px) {
   .page-shell {
     width: min(100% - 1rem, 1180px);
@@ -427,5 +535,30 @@ input[type="file"] {
 
   .wide-right {
     grid-template-columns: 1fr;
+  }
+
+  .browser-row,
+  .browser-row-main,
+  .browser-row-meta,
+  .browser-property-row,
+  .archive-row {
+    align-items: flex-start;
+  }
+
+  .browser-row,
+  .browser-property-row {
+    flex-direction: column;
+  }
+
+  .browser-row-meta,
+  .archive-row {
+    width: 100%;
+    text-align: left;
+    justify-content: flex-start;
+  }
+
+  .archive-row {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
   }
 }

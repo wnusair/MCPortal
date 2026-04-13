@@ -1,10 +1,11 @@
+{% from 'macros/icons.html' import icon %}
 {% extends 'base.html' %}
 
 {% block title %}{{ managed_path.label }} · {{ app_name }}{% endblock %}
 
 {% block content %}
 <section class="page-section">
-  <div class="section-heading">
+  <div class="section-heading compact">
     <div>
       <p class="eyebrow">{{ managed_path.path_type }}</p>
       <h2>{{ target.name or managed_path.label }}</h2>
@@ -18,28 +19,71 @@
     </div>
   </div>
 
+  {% if target.is_file() %}
+  <article class="card">
+    <div class="browser-properties">
+      <div class="browser-property-row">
+        <span class="muted">Type</span>
+        <strong>{{ file_details.entry_type }}</strong>
+      </div>
+      <div class="browser-property-row">
+        <span class="muted">Last modified</span>
+        <strong>{{ file_details.modified_at }}</strong>
+      </div>
+      <div class="browser-property-row">
+        <span class="muted">Size</span>
+        <strong>{{ file_details.size_display }}</strong>
+      </div>
+    </div>
+  </article>
+  {% endif %}
+
   {% if target.is_dir() %}
   <article class="card">
-    <table class="table">
-      <thead><tr><th>Name</th><th>Type</th><th></th></tr></thead>
-      <tbody>
+    <div class="browser-list browser-list--directory">
         {% for entry in entries %}
-        <tr>
-          <td>{{ entry.name }}</td>
-          <td>{{ 'Directory' if entry.is_dir else 'File' }}</td>
-          <td><a href="{{ url_for('files.browse', path_id=managed_path.id, subpath=entry.relative_path) }}">Open</a></td>
-        </tr>
+        <a class="browser-row browser-row--link" href="{{ url_for('files.browse', path_id=managed_path.id, subpath=entry.relative_path) }}">
+          <div class="browser-row-main">
+            {% if entry.is_dir %}
+            {{ icon('folder', 'icon browser-row-icon') }}
+            {% elif entry.entry_type == 'Archive' %}
+            {{ icon('archive', 'icon browser-row-icon') }}
+            {% else %}
+            {{ icon('file', 'icon browser-row-icon') }}
+            {% endif %}
+            <div>
+              <h3 class="browser-row-title">{{ entry.name }}</h3>
+              <p class="muted">{{ entry.entry_type }}</p>
+            </div>
+          </div>
+          <div class="browser-row-meta">
+            <span class="muted">{{ entry.size_display }}</span>
+            <span class="muted">{{ entry.modified_at }}</span>
+            <strong>Open</strong>
+          </div>
+        </a>
+        {% else %}
+        <div class="browser-row browser-row--empty">
+          <p class="muted">This folder is empty.</p>
+        </div>
         {% endfor %}
-      </tbody>
-    </table>
+    </div>
   </article>
-  {% elif is_text_file %}
+  {% elif file_details.preview_mode == 'text' and supports_edit %}
   <article class="card">
-    <p class="eyebrow">{{ 'Direct edit' if can_edit else 'Approval request' }}</p>
-    <h3>{{ 'Edit live file' if can_edit else 'Request a change' }}</h3>
-    <p class="muted">
-      {{ 'Changes save directly to the live file.' if can_edit else 'Update the file contents below and send a single approval request.' }}
-    </p>
+    <div class="section-heading compact">
+      <div>
+        <p class="eyebrow">{{ 'Direct edit' if can_edit else 'Approval request' }}</p>
+        <h3>{{ 'Edit live file' if can_edit else 'Request a change' }}</h3>
+        <p class="muted">
+          {{ 'Changes save directly to the live file.' if can_edit else 'Update the file contents below and send a single approval request.' }}
+        </p>
+      </div>
+      <div class="inline-actions">
+        <a class="btn btn-ghost" href="{{ url_for('files.raw', path_id=managed_path.id, subpath=subpath) }}">Open raw file</a>
+        <a class="btn btn-secondary" href="{{ url_for('files.raw', path_id=managed_path.id, subpath=subpath, download=1) }}">Download</a>
+      </div>
+    </div>
     <form method="post" class="stack-form">
       {{ edit_form.hidden_tag() }}
       {{ edit_form.content(class_='editor') }}
@@ -48,9 +92,59 @@
       </button>
     </form>
   </article>
+  {% elif file_details.preview_mode == 'text' %}
+  <article class="card">
+    <div class="section-heading compact">
+      <div>
+        <p class="eyebrow">Read only preview</p>
+        <h3>View file</h3>
+        <p class="muted">This file can be read in the browser, but MCPortal will not allow edits here.</p>
+      </div>
+      <div class="inline-actions">
+        <a class="btn btn-ghost" href="{{ url_for('files.raw', path_id=managed_path.id, subpath=subpath) }}">Open raw file</a>
+        <a class="btn btn-secondary" href="{{ url_for('files.raw', path_id=managed_path.id, subpath=subpath, download=1) }}">Download</a>
+      </div>
+    </div>
+    <pre class="console-output file-preview">{{ content }}</pre>
+  </article>
+  {% elif file_details.preview_mode == 'archive' %}
+  <article class="card">
+    <div class="section-heading compact">
+      <div>
+        <p class="eyebrow">Archive preview</p>
+        <h3>Contents</h3>
+        <p class="muted">Compressed server archives are read only. You can inspect the contents here or download the raw file.</p>
+      </div>
+      <div class="inline-actions">
+        <a class="btn btn-ghost" href="{{ url_for('files.raw', path_id=managed_path.id, subpath=subpath) }}">Open raw file</a>
+        <a class="btn btn-secondary" href="{{ url_for('files.raw', path_id=managed_path.id, subpath=subpath, download=1) }}">Download</a>
+      </div>
+    </div>
+    <div class="archive-list">
+      {% for entry in archive_entries %}
+      <div class="archive-row">
+        <span class="mono archive-name">{{ entry.name }}</span>
+        <span class="muted">{{ entry.entry_type }}</span>
+        <span class="muted">{{ entry.size_display }}</span>
+      </div>
+      {% else %}
+      <p class="muted">This archive is empty.</p>
+      {% endfor %}
+    </div>
+  </article>
   {% else %}
   <article class="card">
-    <p class="muted">This file can be viewed by path, but not edited in the browser because it is not on the allowed text-file list.</p>
+    <div class="section-heading compact">
+      <div>
+        <p class="eyebrow">Raw file access</p>
+        <h3>No inline preview</h3>
+        <p class="muted">This file is still reachable from the browser. Open the raw file directly or download it.</p>
+      </div>
+      <div class="inline-actions">
+        <a class="btn btn-ghost" href="{{ url_for('files.raw', path_id=managed_path.id, subpath=subpath) }}">Open raw file</a>
+        <a class="btn btn-secondary" href="{{ url_for('files.raw', path_id=managed_path.id, subpath=subpath, download=1) }}">Download</a>
+      </div>
+    </div>
   </article>
   {% endif %}
 </section>
