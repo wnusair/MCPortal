@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+
+{% block title %}Bootstrap · {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="auth-shell">
+  <article class="card auth-card">
+    <p class="eyebrow">First-run setup</p>
+    <h2>Create the initial superadmin</h2>
+    <p class="muted">This account owns approvals, settings, and the first user tree.</p>
+    <form method="post" class="stack-form">
+      {{ form.hidden_tag() }}
+      <label>{{ form.username.label }} {{ form.username(class_='input') }}</label>
+      <label>{{ form.password.label }} {{ form.password(class_='input') }}</label>
+      <label>{{ form.confirm_password.label }} {{ form.confirm_password(class_='input') }}</label>
+      <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
+    </form>
+  </article>
+</section>
+{% endblock %}

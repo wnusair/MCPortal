@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Commands · {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="two-column">
+  <article class="card">
+    <p class="eyebrow">Minecraft only</p>
+    <h2>RCON command center</h2>
+    <p class="muted">Commands go through Minecraft RCON only. No shell execution is exposed here.</p>
+    <form method="post" class="stack-form">
+      {{ form.hidden_tag() }}
+      <label>{{ form.command.label }} {{ form.command(class_='input') }}</label>
+      <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
+    </form>
+    {% if output %}
+    <pre class="console-output">{{ output }}</pre>
+    {% endif %}
+  </article>
+
+  <article class="card">
+    <p class="eyebrow">Managed controls</p>
+    <h2>Lifecycle buttons</h2>
+    <div class="tile-grid">
+      {% for action in actions %}
+      <form action="{{ url_for('commands.run_action', action_key=action.key) }}" method="post" class="action-tile">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <h3>{{ action.label }}</h3>
+        <p class="muted">{{ action.key }}</p>
+        <button type="submit" class="btn btn-secondary">Run</button>
+      </form>
+      {% else %}
+      <p class="muted">No lifecycle actions are configured.</p>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+
+<section class="page-section">
+  <article class="card">
+    <p class="eyebrow">Recent submissions</p>
+    <h3>Your pending and reviewed requests</h3>
+    <table class="table">
+      <thead><tr><th>Type</th><th>Target</th><th>Status</th><th>Created</th></tr></thead>
+      <tbody>
+        {% for item in requests %}
+        <tr>
+          <td>{{ item.request_type }}</td>
+          <td>{{ item.target_name }}</td>
+          <td><span class="status-pill {{ item.status }}">{{ item.status }}</span></td>
+          <td>{{ item.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No request history yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+</section>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}Audit · {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="page-section">
+  <article class="card">
+    <p class="eyebrow">Append-only trail</p>
+    <h2>Audit log</h2>
+    <table class="table">
+      <thead><tr><th>When</th><th>Action</th><th>Target</th><th>Status</th><th>Actor</th></tr></thead>
+      <tbody>
+        {% for entry in entries %}
+        <tr>
+          <td>{{ entry.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+          <td>{{ entry.action }}</td>
+          <td>{{ entry.target_name }}</td>
+          <td><span class="status-pill {{ entry.status }}">{{ entry.status }}</span></td>
+          <td>{{ entry.actor.username if entry.actor else 'system' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No audit events yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+</section>
+{% endblock %}

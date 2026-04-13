@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}Permissions · {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="two-column">
+  <article class="card">
+    <p class="eyebrow">Target account</p>
+    <h2>{{ target_user.username }}</h2>
+    <p class="muted">Role: {{ target_user.role }}</p>
+    <form method="post" class="stack-form">
+      {{ form.hidden_tag() }}
+      <label>{{ form.scope_type.label }} {{ form.scope_type(class_='input') }}</label>
+      <label>{{ form.scope_value.label }} {{ form.scope_value(class_='input') }}</label>
+      <label>{{ form.capability.label }} {{ form.capability(class_='input') }}</label>
+      <label>{{ form.effect.label }} {{ form.effect(class_='input') }}</label>
+      <button type="submit" name="grant-submit" value="1" class="btn btn-primary">{{ form.submit.label.text }}</button>
+    </form>
+  </article>
+
+  <article class="card">
+    <p class="eyebrow">Explicit grants</p>
+    <h2>Overrides and additions</h2>
+    <table class="table">
+      <thead><tr><th>Scope</th><th>Capability</th><th>Effect</th><th></th></tr></thead>
+      <tbody>
+        {% for grant in grants %}
+        <tr>
+          <td>{{ grant.scope_type }} · {{ grant.scope_value }}</td>
+          <td>{{ grant.capability }}</td>
+          <td><span class="status-pill {{ grant.effect }}">{{ grant.effect }}</span></td>
+          <td>
+            <form method="post" action="{{ url_for('users.delete_permission', user_id=target_user.id, grant_id=grant.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-ghost">Remove</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No explicit permission grants yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+</section>
+{% endblock %}

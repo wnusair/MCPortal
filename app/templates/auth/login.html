@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block title %}Sign In · {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="auth-shell">
+  <article class="card auth-card">
+    <p class="eyebrow">Secure access</p>
+    <h2>Sign in</h2>
+    <p class="muted">Sessions are limited, audited, and rate-limited.</p>
+    <form method="post" class="stack-form">
+      {{ form.hidden_tag() }}
+      <label>{{ form.username.label }} {{ form.username(class_='input') }}</label>
+      <label>{{ form.password.label }} {{ form.password(class_='input') }}</label>
+      <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
+    </form>
+  </article>
+</section>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}Files · {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="page-section">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Managed storage</p>
+      <h2>Browsable roots</h2>
+    </div>
+  </div>
+  <div class="tile-grid">
+    {% for path in managed_paths %}
+    <article class="card tile-card">
+      <p class="eyebrow">{{ path.path_type }}</p>
+      <h3>{{ path.label }}</h3>
+      <p class="muted">{{ path.absolute_path }}</p>
+      <a class="btn btn-secondary" href="{{ url_for('files.browse', path_id=path.id) }}">Open</a>
+    </article>
+    {% else %}
+    <article class="card">
+      <p class="muted">No managed paths are available for this account.</p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

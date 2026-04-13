@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Approvals · {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="page-section">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Superadmin queue</p>
+      <h2>Pending changes</h2>
+    </div>
+  </div>
+  <div class="list-stack">
+    {% for item in pending_requests %}
+    <article class="card">
+      <div class="section-heading compact">
+        <div>
+          <p class="eyebrow">{{ item.request_type }}</p>
+          <h3>{{ item.target_name }}</h3>
+          <p class="muted">Requested by {{ item.requester.username }} on {{ item.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+        </div>
+        <span class="status-pill {{ item.status }}">{{ item.status }}</span>
+      </div>
+      <pre class="console-output">{{ item.payload_json | tojson(indent=2) }}</pre>
+      <form method="post" action="{{ url_for('approvals.review', request_id=item.id) }}" class="stack-form compact-form">
+        {{ forms[item.id].hidden_tag() }}
+        {{ forms[item.id].review_note(class_='editor editor-compact', placeholder='Optional review note') }}
+        <div class="inline-actions">
+          <button type="submit" name="{{ forms[item.id].approve.name }}" value="1" class="btn btn-primary">Approve</button>
+          <button type="submit" name="{{ forms[item.id].reject.name }}" value="1" class="btn btn-danger">Reject</button>
+        </div>
+      </form>
+    </article>
+    {% else %}
+    <article class="card"><p class="muted">No pending requests right now.</p></article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

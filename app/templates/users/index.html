@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Users · {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="two-column">
+  <article class="card">
+    <p class="eyebrow">Hierarchy</p>
+    <h2>Create an underling</h2>
+    <form method="post" class="stack-form">
+      {{ form.hidden_tag() }}
+      <label>{{ form.username.label }} {{ form.username(class_='input') }}</label>
+      <label>{{ form.password.label }} {{ form.password(class_='input') }}</label>
+      <label>{{ form.confirm_password.label }} {{ form.confirm_password(class_='input') }}</label>
+      <label>{{ form.role.label }} {{ form.role(class_='input') }}</label>
+      <button type="submit" name="create-submit" value="1" class="btn btn-primary">{{ form.submit.label.text }}</button>
+    </form>
+  </article>
+
+  <article class="card">
+    <p class="eyebrow">Access tree</p>
+    <h2>Current accounts</h2>
+    <table class="table">
+      <thead><tr><th>Username</th><th>Role</th><th>Parent</th><th></th></tr></thead>
+      <tbody>
+        {% for user in users %}
+        <tr>
+          <td>{{ user.username }}</td>
+          <td>{{ user.role }}</td>
+          <td>{{ user.parent.username if user.parent else 'Root' }}</td>
+          <td>
+            {% if current_user.is_superadmin or user.parent_id == current_user.id %}
+            <a href="{{ url_for('users.permissions', user_id=user.id) }}">Permissions</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+</section>
+{% endblock %}

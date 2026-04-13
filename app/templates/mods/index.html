@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Mods · {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="two-column">
+  <article class="card">
+    <p class="eyebrow">Quarantine-first</p>
+    <h2>Upload a Fabric mod</h2>
+    <p class="muted">Unauthorized uploads are staged in a pending area until a superadmin approves them.</p>
+    <form method="post" enctype="multipart/form-data" class="stack-form">
+      {{ form.hidden_tag() }}
+      <label>{{ form.destination_id.label }} {{ form.destination_id(class_='input') }}</label>
+      <label>{{ form.upload.label }} {{ form.upload(class_='input') }}</label>
+      <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
+    </form>
+  </article>
+
+  <article class="card">
+    <p class="eyebrow">Recent staged files</p>
+    <h2>Upload ledger</h2>
+    <table class="table">
+      <thead><tr><th>File</th><th>Status</th><th>Size</th><th>SHA-256</th></tr></thead>
+      <tbody>
+        {% for upload in uploads %}
+        <tr>
+          <td>{{ upload.original_filename }}</td>
+          <td><span class="status-pill {{ upload.status }}">{{ upload.status }}</span></td>
+          <td>{{ upload.file_size }}</td>
+          <td class="mono">{{ upload.checksum_sha256[:12] }}...</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No staged uploads yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+</section>
+{% endblock %}

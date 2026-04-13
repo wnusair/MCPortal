@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}Overview · {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="hero card">
+  <div>
+    <p class="eyebrow">Operations hub</p>
+    <h2>Fabric server command center</h2>
+    <p class="muted">Manage files, queue risky changes, and keep every action traceable.</p>
+  </div>
+  <div class="metric-grid">
+    <article class="metric"><span>Pending</span><strong>{{ pending_count }}</strong></article>
+    <article class="metric"><span>Managed paths</span><strong>{{ managed_paths }}</strong></article>
+    <article class="metric"><span>Managed actions</span><strong>{{ managed_actions }}</strong></article>
+  </div>
+</section>
+
+<section class="two-column">
+  <article class="card">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Lifecycle</p>
+        <h3>Server actions</h3>
+      </div>
+    </div>
+    {% if actions %}
+    <div class="tile-grid">
+      {% for action in actions %}
+      <form action="{{ url_for('commands.run_action', action_key=action.key) }}" method="post" class="action-tile">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <h4>{{ action.label }}</h4>
+        <p>{{ action.key }}</p>
+        <button type="submit" class="btn btn-secondary">Run</button>
+      </form>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="muted">No managed actions are configured yet.</p>
+    {% endif %}
+  </article>
+
+  <article class="card">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Recent trail</p>
+        <h3>Audit activity</h3>
+      </div>
+    </div>
+    {% if recent_audits %}
+    <div class="list-stack">
+      {% for entry in recent_audits %}
+      <div class="list-row">
+        <div>
+          <strong>{{ entry.action }}</strong>
+          <p class="muted">{{ entry.target_name }}</p>
+        </div>
+        <span class="status-pill {{ entry.status }}">{{ entry.status }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="muted">Audit activity will appear here once the panel is in use.</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

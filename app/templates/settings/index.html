@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Settings · {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="three-column">
+  <article class="card">
+    <p class="eyebrow">System</p>
+    <h2>Core settings</h2>
+    <form method="post" class="stack-form">
+      {{ system_form.hidden_tag() }}
+      <label>{{ system_form.rcon_host.label }} {{ system_form.rcon_host(class_='input') }}</label>
+      <label>{{ system_form.rcon_port.label }} {{ system_form.rcon_port(class_='input') }}</label>
+      <label>{{ system_form.rcon_password.label }} {{ system_form.rcon_password(class_='input') }}</label>
+      <label>{{ system_form.pending_upload_dir.label }} {{ system_form.pending_upload_dir(class_='input') }}</label>
+      <label>{{ system_form.backup_dir.label }} {{ system_form.backup_dir(class_='input') }}</label>
+      <button type="submit" name="system-submit" value="1" class="btn btn-primary">{{ system_form.submit.label.text }}</button>
+    </form>
+  </article>
+
+  <article class="card">
+    <p class="eyebrow">Files</p>
+    <h2>Add managed path</h2>
+    <form method="post" class="stack-form">
+      {{ path_form.hidden_tag() }}
+      <label>{{ path_form.label.label }} {{ path_form.label(class_='input') }}</label>
+      <label>{{ path_form.absolute_path.label }} {{ path_form.absolute_path(class_='input') }}</label>
+      <label>{{ path_form.path_type.label }} {{ path_form.path_type(class_='input') }}</label>
+      <label class="checkbox-row">{{ path_form.allow_view() }} <span>Allow view</span></label>
+      <label class="checkbox-row">{{ path_form.allow_edit() }} <span>Allow direct edit</span></label>
+      <label class="checkbox-row">{{ path_form.allow_upload() }} <span>Allow upload</span></label>
+      <button type="submit" name="path-submit" value="1" class="btn btn-secondary">{{ path_form.submit.label.text }}</button>
+    </form>
+    <div class="mini-table">
+      {% for item in managed_paths %}
+      <div class="list-row"><strong>{{ item.label }}</strong><span class="muted">{{ item.absolute_path }}</span></div>
+      {% else %}
+      <p class="muted">No managed paths yet.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="card">
+    <p class="eyebrow">Buttons</p>
+    <h2>Add managed action</h2>
+    <form method="post" class="stack-form">
+      {{ action_form.hidden_tag() }}
+      <label>{{ action_form.key.label }} {{ action_form.key(class_='input') }}</label>
+      <label>{{ action_form.label.label }} {{ action_form.label(class_='input') }}</label>
+      <label>{{ action_form.executable_path.label }} {{ action_form.executable_path(class_='input') }}</label>
+      <label>{{ action_form.arguments_json.label }} {{ action_form.arguments_json(class_='editor editor-compact') }}</label>
+      <label>{{ action_form.working_directory.label }} {{ action_form.working_directory(class_='input') }}</label>
+      <button type="submit" name="action-submit" value="1" class="btn btn-secondary">{{ action_form.submit.label.text }}</button>
+    </form>
+    <div class="mini-table">
+      {% for item in managed_actions %}
+      <div class="list-row"><strong>{{ item.label }}</strong><span class="muted">{{ item.key }}</span></div>
+      {% else %}
+      <p class="muted">No managed actions yet.</p>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+{% endblock %}
