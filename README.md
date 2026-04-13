@@ -42,6 +42,8 @@ Open the app, visit `/bootstrap`, and create the first superadmin account.
 
 The sample `DATABASE_URL=sqlite:///mcportal.db` stores the SQLite file under the Flask `instance/` directory.
 
+Managed lifecycle buttons use `MANAGED_ACTION_TIMEOUT` for blocking scripts. The auto-managed `server.start` action launches in the background after a short grace period so MCPortal does not time out waiting for the Minecraft process to exit.
+
 ## First configuration steps
 
 1. Go to Settings.

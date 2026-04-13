@@ -70,6 +70,8 @@ class Config:
     RCON_PORT = int(os.getenv("RCON_PORT", "25575"))
     RCON_PASSWORD = os.getenv("RCON_PASSWORD", "")
     RCON_TIMEOUT = int(os.getenv("RCON_TIMEOUT", "5"))
+    MANAGED_ACTION_TIMEOUT = int(os.getenv("MANAGED_ACTION_TIMEOUT", "300"))
+    MANAGED_ACTION_START_GRACE_PERIOD = float(os.getenv("MANAGED_ACTION_START_GRACE_PERIOD", "2"))
     ALLOWED_UPLOAD_EXTENSIONS = {"jar"}
     ALLOWED_TEXT_EXTENSIONS = {
         ".cfg",

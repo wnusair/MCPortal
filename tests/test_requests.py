@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import io
+import subprocess
 import tarfile
 from pathlib import Path
 
-from app.models import PendingRequest, StagedUpload
+from app.models import ManagedAction, PendingRequest, StagedUpload
 from app.services.server_control import MinecraftServerStatus
 
 
@@ -253,3 +254,91 @@ def test_commands_page_uses_console_shell(client, user_factory, login, monkeypat
     assert 'class="card console-card"' in page
     assert "Server console" in page
     assert "mcp://server-console" in page
+
+
+def test_server_start_action_launches_in_background(app, client, user_factory, login, monkeypatch, tmp_path: Path):
+    user_factory("root_actions", role="superadmin")
+    executable_path = str(Path("/bin/echo").resolve())
+
+    with app.app_context():
+        action = ManagedAction(
+            key="server.start",
+            label="Start server",
+            executable_path=executable_path,
+            arguments_json='["starting"]',
+            working_directory=str(tmp_path),
+            enabled=True,
+        )
+        from app.extensions import db
+
+        db.session.add(action)
+        db.session.commit()
+
+    launch = {}
+
+    class FakeProcess:
+        def __init__(self, args, **kwargs):
+            launch["args"] = args
+            launch["kwargs"] = kwargs
+            self.pid = 4242
+
+        def wait(self, timeout):
+            launch["timeout"] = timeout
+            raise subprocess.TimeoutExpired(cmd=launch["args"], timeout=timeout)
+
+    def fail_run(*args, **kwargs):
+        raise AssertionError("server.start should not use subprocess.run")
+
+    monkeypatch.setattr("app.services.server_control.subprocess.Popen", FakeProcess)
+    monkeypatch.setattr("app.services.server_control.subprocess.run", fail_run)
+
+    login("root_actions")
+    response = client.post("/commands/actions/server.start", follow_redirects=False)
+
+    assert response.status_code == 302
+    assert launch["args"] == [executable_path, "starting"]
+    assert launch["kwargs"]["cwd"] == str(tmp_path.resolve())
+    assert launch["kwargs"]["start_new_session"] is True
+    assert launch["kwargs"]["stdin"] is subprocess.DEVNULL
+    assert launch["kwargs"]["stdout"] is subprocess.DEVNULL
+    assert launch["kwargs"]["stderr"] is subprocess.DEVNULL
+    assert launch["timeout"] == app.config["MANAGED_ACTION_START_GRACE_PERIOD"]
+    with client.session_transaction() as session:
+        assert ("success", "Action server.start launched.") in session["_flashes"]
+
+
+def test_managed_action_timeout_uses_configured_value(app, monkeypatch, tmp_path: Path):
+    executable_path = str(Path("/bin/echo").resolve())
+
+    with app.app_context():
+        action = ManagedAction(
+            key="backup.now",
+            label="Backup now",
+            executable_path=executable_path,
+            arguments_json='["backup"]',
+            working_directory=str(tmp_path),
+            enabled=True,
+        )
+        from app.extensions import db
+        from app.services.server_control import run_managed_action
+
+        db.session.add(action)
+        db.session.commit()
+        app.config["MANAGED_ACTION_TIMEOUT"] = 90
+
+        call = {}
+
+        def fake_run(args, **kwargs):
+            call["args"] = args
+            call["kwargs"] = kwargs
+            return subprocess.CompletedProcess(args=args, returncode=0, stdout="done\n", stderr="")
+
+        monkeypatch.setattr("app.services.server_control.subprocess.run", fake_run)
+
+        result = run_managed_action("backup.now")
+
+    assert call["args"] == [executable_path, "backup"]
+    assert call["kwargs"]["cwd"] == str(tmp_path.resolve())
+    assert call["kwargs"]["timeout"] == 90
+    assert result["status"] == "completed"
+    assert result["stdout"] == "done"

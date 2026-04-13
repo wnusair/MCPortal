@@ -34,11 +34,7 @@ def validate_minecraft_command(command: str) -> str:
     return cleaned
 
 
-def run_managed_action(action_key: str) -> dict[str, str | int]:
-    action = ManagedAction.query.filter_by(key=action_key, enabled=True).first()
-    if action is None:
-        raise ServerControlError("That managed action is not configured.")
-
+def _resolve_managed_action_command(action: ManagedAction) -> tuple[list[str], str | None]:
     executable = Path(action.executable_path).expanduser().resolve()
     if not executable.is_absolute() or not executable.exists():
         raise ServerControlError("The configured action path is invalid.")
@@ -50,22 +46,94 @@ def run_managed_action(action_key: str) -> dict[str, str | int]:
     except ValueError:
         arguments = shlex.split(action.arguments_json or "")
 
+    cwd = str(Path(action.working_directory).resolve()) if action.working_directory else None
+    return [str(executable), *arguments], cwd
+
+
+def _format_managed_action_failure(returncode: int, stdout: str, stderr: str) -> str:
+    detail = stderr.strip() or stdout.strip()
+    if detail:
+        return f"Managed action exited with status {returncode}: {detail}"
+    return f"Managed action exited with status {returncode}."
+
+
+def _run_blocking_managed_action(command: list[str], cwd: str | None) -> dict[str, str | int]:
+    timeout = int(current_app.config["MANAGED_ACTION_TIMEOUT"])
+
     try:
         result = subprocess.run(
-            [str(executable), *arguments],
-            cwd=Path(action.working_directory).resolve() if action.working_directory else None,
+            command,
+            cwd=cwd,
             capture_output=True,
             check=False,
             text=True,
-            timeout=30,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise ServerControlError(f"Managed action timed out after {timeout} seconds.") from exc
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ServerControlError(str(exc)) from exc
+
+    stdout = result.stdout.strip()
+    stderr = result.stderr.strip()
+    if result.returncode != 0:
+        raise ServerControlError(_format_managed_action_failure(result.returncode, stdout, stderr))
+
+    return {
+        "returncode": result.returncode,
+        "stdout": stdout,
+        "stderr": stderr,
+        "status": "completed",
+    }
+
+
+def _run_background_start_action(command: list[str], cwd: str | None) -> dict[str, str | int]:
+    grace_period = float(current_app.config["MANAGED_ACTION_START_GRACE_PERIOD"])
+
+    try:
+        process = subprocess.Popen(
+            command,
+            cwd=cwd,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
         )
     except (OSError, subprocess.SubprocessError) as exc:
         raise ServerControlError(str(exc)) from exc
+
+    try:
+        returncode = process.wait(timeout=grace_period)
+    except subprocess.TimeoutExpired:
+        return {
+            "returncode": 0,
+            "stdout": "",
+            "stderr": "",
+            "status": "launched",
+            "detail": "Managed action is still running in the background.",
+            "pid": process.pid,
+        }
+
+    if returncode != 0:
+        raise ServerControlError(f"Managed action exited immediately with status {returncode}.")
+
     return {
-        "returncode": result.returncode,
-        "stdout": result.stdout.strip(),
-        "stderr": result.stderr.strip(),
+        "returncode": returncode,
+        "stdout": "",
+        "stderr": "",
+        "status": "completed",
     }
+
+
+def run_managed_action(action_key: str) -> dict[str, str | int]:
+    action = ManagedAction.query.filter_by(key=action_key, enabled=True).first()
+    if action is None:
+        raise ServerControlError("That managed action is not configured.")
+
+    command, cwd = _resolve_managed_action_command(action)
+    if action.key == "server.start":
+        return _run_background_start_action(command, cwd)
+    return _run_blocking_managed_action(command, cwd)
 
 
 @dataclass

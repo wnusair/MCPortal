@@ -85,7 +85,8 @@ def run_action(action_key: str):
                 actor=current_user,
                 details=result,
             )
-            flash(f"Action {action_key} completed.", "success")
+            action_state = "launched" if result.get("status") == "launched" else "completed"
+            flash(f"Action {action_key} {action_state}.", "success")
         except ServerControlError as exc:
             flash(str(exc), "danger")
     else:
